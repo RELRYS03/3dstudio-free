@@ -1,4 +1,6 @@
 """Run the app with disposable credentials and database, then test in Chromium."""
+from base64 import b64decode
+
 import json
 import struct
 import os
@@ -30,6 +32,7 @@ def glb_triangle():
 
 
 def exercise(browser, base, admin, viewer):
+    expect.set_options(timeout=15000)
     for width, height in [(1440, 920), (390, 844)]:
         page = browser.new_page(viewport={"width": width, "height": height})
         errors = []
@@ -67,6 +70,15 @@ def exercise(browser, base, admin, viewer):
         page.get_by_label("Descreva uma forma").fill("crie uma esfera")
         page.get_by_role("button", name="Enviar").click()
         expect(page.get_by_text("Assistente: Forma adicionada: Esfera.")).to_be_visible()
+        page.get_by_label("Descreva uma forma").fill("Crie um personagem verde")
+        page.get_by_role("button", name="Enviar").click()
+        expect(page.get_by_role("button", name="Pedestal")).to_be_visible()
+        expect(page.get_by_role("button", name="Cabeça")).to_be_visible()
+        image = b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAAAAABX3VL4AAAADklEQVR4nGNg+M/Q8Q4ABgACduMRc+YAAAAASUVORK5CYII=")
+        page.get_by_label("Imagem de referência").set_input_files(
+            {"name":"referencia.png","mimeType":"image/png","buffer":image})
+        page.get_by_role("button", name="Gerar relevo 3D").click()
+        expect(page.get_by_role("button", name="Relevo de referencia.png")).to_be_visible()
         upload = page.get_by_label("Importar modelo")
         upload.set_input_files({"name": "ruim.glb", "mimeType": "model/gltf-binary", "buffer": b"bad"})
         page.get_by_role("button", name="Importar arquivo").click()

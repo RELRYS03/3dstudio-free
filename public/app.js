@@ -1,3 +1,4 @@
+import { buildFigurine, imageRelief } from '/generation.js';
 import { makeViewport, readModel, shapes } from '/viewport.js';
 
 const app = document.querySelector('#app');
@@ -117,6 +118,7 @@ async function studio(admin) {
       <section class="prompt" aria-label="Assistente local de formas">
         <h2>Assistente de formas</h2><div id="messages"></div>
         <form id="prompt" ${admin ? '' : 'hidden'}><label>Descreva uma forma<input name="prompt" maxlength="300" required placeholder="Ex.: crie uma esfera"></label><div class="row"><button class="primary">Enviar</button></div></form>
+        <form id="relief" ${admin ? '' : 'hidden'}><label>Imagem de referência<input name="image" type="file" accept="image/png,image/jpeg,image/webp" required></label><div class="row"><button>Gerar relevo 3D</button></div></form>
       </section>
     </section>
     <aside class="inspector" aria-label="Biblioteca e propriedades">
@@ -150,7 +152,7 @@ async function studio(admin) {
   }
   function renderMessages() {
     find('messages').replaceChildren();
-    if (!project.messages.length) find('messages').append(make('p','Formas disponíveis: cubo, esfera, cilindro, cone e anel.',{class:'muted'}));
+    if (!project.messages.length) find('messages').append(make('p','Experimente um personagem, uma primitiva ou uma imagem de referência.',{class:'muted'}));
     for (const message of project.messages) find('messages').append(make('p', String(message?.text ?? '')));
     find('messages').scrollTop = find('messages').scrollHeight;
   }
@@ -219,6 +221,31 @@ async function studio(admin) {
     } catch (error) { status(error.message,true); }
   };
   if (!admin) return;
+  try {
+    const engine = await api('/engine');
+    if (engine.enabled) {
+      const form = find('relief');
+      const generate = button('Gerar volume com TripoSR', async () => {
+        if (loading || !form.reportValidity()) return;
+        const file = form.elements.image.files[0];
+        loading = generate.disabled = true;
+        status('Gerando volume com TripoSR…');
+        try {
+          requireViewport();
+          if (file.size > 5_000_000) throw new Error('Use uma imagem de até 5 MB.');
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const data = bytes.toBase64 ? bytes.toBase64() : btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
+          const output = await api('/engine','POST',{mime:file.type,data});
+          await addItem({...newItem('imported','Volume de '+file.name.slice(0,70)),filename:'volume.obj',source:output.source});
+          status('Malha volumétrica criada.');
+        } catch (error) { status(error.message,true); }
+        finally { loading = generate.disabled = false; }
+      });
+      form.querySelector('.row').append(generate);
+    }
+  } catch {
+    status('O motor opcional está indisponível.');
+  }
   find('project-name').oninput = event => {
     project.name = event.target.value;
     find('title').textContent = project.name || 'Projeto sem título';
@@ -257,14 +284,41 @@ async function studio(admin) {
     const input = form.elements.prompt;
     const text = input.value.trim();
     const shape = proceduralShape(text);
-    if (!shape) return status('Descreva um cubo, uma esfera, um cilindro, um cone ou um anel.',true);
+    const figurine = buildFigurine(text);
+    if (!shape && !figurine.length) return status('Descreva um cubo, uma esfera, um cilindro, um cone ou um anel.',true);
     try {
+      if (project.objects.length+figurine.length > 100) throw new Error('A cena comporta até 100 objetos.');
+      if (figurine.length) {
+        for (const item of figurine) await addItem(item);
+        project.messages.push({text:'Você: '+text},{text:'Assistente: Personagem composto adicionado à cena.'});
+        input.value = '';
+        renderMessages();
+        return status('Personagem criado localmente.');
+      }
       await addItem(newItem(shape,shapes[shape][0]));
       project.messages.push({text:'Você: '+text},{text:'Assistente: '+'Forma adicionada: '+shapes[shape][0]+'.'});
       input.value = '';
       renderMessages();
       status('Forma criada localmente.');
     } catch (error) { status(error.message,true); }
+  };
+  find('relief').onsubmit = async event => {
+    event.preventDefault();
+    if (loading) return;
+    const form = event.currentTarget;
+    const submit = form.querySelector('button');
+    loading = submit.disabled = true;
+    status('Gerando relevo…');
+    try {
+      const file = form.elements.image.files[0];
+      const source = await imageRelief(file);
+      await addItem({...newItem('imported','Relevo de '+file.name.slice(0,70)),filename:'relevo.obj',source});
+      project.messages.push({text:'Imagem: '+file.name},{text:'Assistente: Relevo de malha criado a partir da luminosidade.'});
+      renderMessages();
+      form.reset();
+      status('Relevo 3D criado.');
+    } catch (error) { status(error.message,true); }
+    finally { loading = submit.disabled = false; }
   };
   find('import').onsubmit = async event => {
     event.preventDefault();

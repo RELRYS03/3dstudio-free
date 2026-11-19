@@ -1,3 +1,4 @@
+import { generateMesh, hasEngine } from './engine.js';
 import { createServer } from 'node:http';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -23,6 +24,7 @@ const attempts = new Map();
 const secureCookie = process.env.SECURE_COOKIE === '1' ? '; Secure' : '';
 const cookie = (value, age) => `studio=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${secureCookie}`;
 const staticFiles = new Map([
+  ['/generation.js', 'public/generation.js'],
   ['/app.js', 'public/app.js'], ['/style.css', 'public/style.css'], ['/viewport.js','public/viewport.js'],
   ['/vendor/three.module.js', 'node_modules/three/build/three.module.js'],
   ['/vendor/three.core.js', 'node_modules/three/build/three.core.js'],
@@ -106,6 +108,8 @@ const server = createServer(async (req, res) => {
       }
       if (!session) throw invalid('Entre para continuar.', 401);
       if (req.method !== 'GET' && session.role !== 'admin') throw invalid('A edição exige acesso administrativo.', 403);
+      if (pathname === '/api/engine' && req.method === 'GET') return reply(200, { enabled: hasEngine && session.role === 'admin' });
+      if (pathname === '/api/engine' && req.method === 'POST') return reply(200, { source: await generateMesh(await jsonBody(req)) });
       if ((pathname === '/api/projects' || pathname === '/api/admin') && req.method === 'GET') {
         if (pathname.endsWith('admin') && session.role !== 'admin') throw invalid('Acesso restrito a administradores.', 403);
         return reply(200, database.prepare('SELECT id,name FROM projects ORDER BY rowid DESC').all());
