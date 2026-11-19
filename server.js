@@ -30,9 +30,7 @@ const staticFiles = new Map([
   ['/vendor/OBJLoader.js', 'node_modules/three/examples/jsm/loaders/OBJLoader.js'],
   ['/vendor/GLTFLoader.js', 'node_modules/three/examples/jsm/loaders/GLTFLoader.js'],
   ['/vendor/OBJExporter.js', 'node_modules/three/examples/jsm/exporters/OBJExporter.js'],
-  ['/vendor/BufferGeometryUtils.js', 'node_modules/three/examples/jsm/utils/BufferGeometryUtils.js'],
   ['/utils/BufferGeometryUtils.js', 'node_modules/three/examples/jsm/utils/BufferGeometryUtils.js'],
-  ['/vendor/SkeletonUtils.js', 'node_modules/three/examples/jsm/utils/SkeletonUtils.js'],
   ['/utils/SkeletonUtils.js', 'node_modules/three/examples/jsm/utils/SkeletonUtils.js'],
 ]);
 const types = { '.html':'text/html', '.css':'text/css', '.js':'text/javascript' };
