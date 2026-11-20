@@ -24,7 +24,7 @@ const attempts = new Map();
 const secureCookie = process.env.SECURE_COOKIE === '1' ? '; Secure' : '';
 const cookie = (value, age) => `studio=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${secureCookie}`;
 const staticFiles = new Map([
-  ['/generation.js', 'public/generation.js'],
+  ['/generation.js', 'public/generation.js'], ['/catalog.js', 'public/catalog.js'],
   ['/app.js', 'public/app.js'], ['/style.css', 'public/style.css'], ['/viewport.js','public/viewport.js'],
   ['/vendor/three.module.js', 'node_modules/three/build/three.module.js'],
   ['/vendor/three.core.js', 'node_modules/three/build/three.core.js'],
@@ -36,7 +36,7 @@ const staticFiles = new Map([
   ['/utils/SkeletonUtils.js', 'node_modules/three/examples/jsm/utils/SkeletonUtils.js'],
 ]);
 const types = { '.html':'text/html', '.css':'text/css', '.js':'text/javascript' };
-const route = /^\/(?:|entrar|studio(?:\/[a-f0-9]{24})?|admin)$/;
+const route = /^\/(?:|entrar|studio(?:\/[a-f0-9]{24})?|admin|discover|templates|assets)$/;
 const invalid = (message, status = 400) => Object.assign(new Error(message), { status });
 
 async function jsonBody(req) {
@@ -108,6 +108,23 @@ const server = createServer(async (req, res) => {
       }
       if (!session) throw invalid('Entre para continuar.', 401);
       if (req.method !== 'GET' && session.role !== 'admin') throw invalid('A edição exige acesso administrativo.', 403);
+      if (pathname === '/api/assets' && req.method === 'GET') {
+        const rows = database.prepare('SELECT id,name,data FROM projects ORDER BY rowid DESC').all();
+        return reply(200, rows.map(row => {
+          let project;
+          try { project = JSON.parse(row.data); } catch { project = { objects: [] }; }
+          return {
+            id: row.id,
+            name: row.name,
+            objects: (Array.isArray(project.objects) ? project.objects : []).map(item => ({
+              id: item.id,
+              name: item.name,
+              shape: item.shape,
+              filename: item.filename || null,
+            })),
+          };
+        }));
+      }
       if (pathname === '/api/engine' && req.method === 'GET') return reply(200, { enabled: hasEngine && session.role === 'admin' });
       if (pathname === '/api/engine' && req.method === 'POST') return reply(200, { source: await generateMesh(await jsonBody(req)) });
       if ((pathname === '/api/projects' || pathname === '/api/admin') && req.method === 'GET') {

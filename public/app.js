@@ -1,4 +1,5 @@
 import { buildFigurine, imageRelief } from '/generation.js';
+import { catalogPage } from '/catalog.js';
 import { makeViewport, readModel, shapes } from '/viewport.js';
 
 const app = document.querySelector('#app');
@@ -42,7 +43,7 @@ function login() {
     try {
       await api('/login','POST',Object.fromEntries(new FormData(form)));
       const next = new URLSearchParams(location.search).get('next');
-      location.replace(next && /^\/(studio(?:\/[a-f0-9]{24})?|admin)$/.test(next) ? next : '/studio');
+      location.replace(next && /^\/(?:studio(?:\/[a-f0-9]{24})?|admin|discover|templates|assets)$/.test(next) ? next : '/studio');
     } catch (error) {
       status(error.message,true);
       submit.disabled = false;
@@ -55,6 +56,9 @@ function header(admin) {
   const nav = make('nav','',{'aria-label':'Navegação principal'});
   head.append(make('a','3dstudofree',{class:'brand',href:'/studio'}),nav);
   nav.append(make('a','Estúdio',{href:'/studio'}));
+  nav.append(make('a','Explorar',{href:'/discover'}));
+  nav.append(make('a','Modelos',{href:'/templates'}));
+  nav.append(make('a','Assets',{href:'/assets'}));
   if (admin) nav.append(make('a','Administração',{href:'/admin'}));
   nav.append(make('small',admin ? 'Administrador' : 'Usuário'));
   nav.append(button('Sair',async () => {
@@ -94,6 +98,25 @@ async function studio(admin) {
   let id = location.pathname.split('/')[2];
   const [projects, saved] = await Promise.all([api('/projects'), id ? api('/projects/'+id) : null]);
   const project = saved ?? {name:'Projeto sem título',objects:[],messages:[]};
+  const templateId = saved ? null : new URLSearchParams(location.search).get('template');
+  if (templateId) {
+    const starter = {
+      cube: ['Cubo de partida','cube','#a5a1ff'],
+      sphere: ['Esfera de partida','sphere','#6fcbb4'],
+      cylinder: ['Cilindro de partida','cylinder','#e5b66d'],
+      cone: ['Cone de partida','cone','#dc8b9f'],
+      torus: ['Anel de partida','torus','#8aa8e8'],
+    }[templateId];
+    if (starter) {
+      project.name = starter[0];
+      project.objects.push({id:crypto.randomUUID(),name:starter[0],shape:starter[1],color:starter[2],
+        position:[0,.7,0],rotation:[0,0,0],scale:[1,1,1]});
+    } else if (templateId === 'character') {
+      project.name = 'Personagem estilizado';
+      project.objects.push(...buildFigurine('crie um personagem azul'));
+      project.messages.push({text:'Modelo inicial: personagem estilizado montado com geometria local.'});
+    }
+  }
   let selected = null;
   let viewport;
   let loading = false;
@@ -195,6 +218,7 @@ async function studio(admin) {
   }
   renderObjects();
   renderMessages();
+  if (templateId && project.objects.length) status('Modelo inicial carregado. Revise a geometria e salve o projeto.');
   try {
     viewport = makeViewport(find('viewport'),select, zoom => { find('zoom').textContent = zoom+'%'; });
     for (const item of project.objects) {
@@ -378,6 +402,11 @@ try {
   else if (!role) login();
   else if (['/','/entrar'].includes(path)) location.replace('/studio');
   else if (path === '/admin') await adminPage();
+  else if (['/discover','/templates','/assets'].includes(path)) {
+    const mode = path.slice(1);
+    await catalogPage({app,api,make,button,mode,admin:role === 'admin'});
+    header(role === 'admin');
+  }
   else await studio(role === 'admin');
 } catch (error) {
   app.replaceChildren(make('main','',{class:'admin'}));
