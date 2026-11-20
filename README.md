@@ -27,6 +27,14 @@ npm start
 
 Abra http://127.0.0.1:3000. O SQLite integrado ao Node cria o banco em `.data/`. Use `STUDIO_DATA_DIR` para escolher outro diretório e `PORT` para mudar a porta. O servidor usa loopback por padrão. Em implantação remota, coloque-o atrás de HTTPS e configure `SECURE_COOKIE=1`.
 
+## Modo gratuito e configuração Meshy
+
+O estúdio local continua disponível sem cartão, assinatura ou chave de provedor: primitivas, personagem procedural, relevo de imagem, edição, visualização e exportação são operações locais. Essas funções não representam uma geração feita pelo serviço Meshy.
+
+O arquivo `.env.example` contém apenas nomes e exemplos seguros. Para uma instalação local, copie-o para `.env` e mantenha `MESHY_API_KEY` vazio enquanto estiver usando os recursos locais gratuitos. O arquivo `.env` é ignorado pelo Git; nunca publique uma chave nem use prefixos `NEXT_PUBLIC_` para credenciais.
+
+A variável `MESHY_API_BASE` aponta para a base oficial da API. **A integração de geração real do Meshy ainda não está implementada nesta branch**; preencher a variável de chave, por si só, não habilita geração externa. A geração paga por API deve ser adicionada e validada separadamente, com estimativa de custos, confirmação explícita e proteção contra tarefas duplicadas. Nenhuma cobrança ou chamada externa é feita pelo modo local atual.
+
 ## Fluxos
 
 - `/entrar`: entrada por perfil e encerramento de sessão na navegação.
