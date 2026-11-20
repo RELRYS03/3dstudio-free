@@ -106,6 +106,24 @@ def exercise(browser, base, admin, viewer):
         expect(page.get_by_role("button", name="triangulo.obj")).to_be_visible()
         page.get_by_role("button", name="Cubo").click()
         expect(page.get_by_label("Posição X", exact=True)).to_have_value("2.5")
+        page.goto(base + "/templates")
+        expect(page.get_by_role("heading", name="Modelos iniciais")).to_be_visible()
+        page.get_by_label("Buscar assets e modelos").fill("personagem")
+        expect(page.get_by_role("heading", name="Personagem estilizado")).to_be_visible()
+        page.get_by_role("button", name="Abrir no estúdio").click()
+        expect(page.get_by_role("heading", name="Personagem estilizado")).to_be_visible()
+        expect(page.get_by_role("button", name="Pedestal")).to_be_visible()
+        expect(page.get_by_role("button", name="Cabeça")).to_be_visible()
+        page.get_by_role("button", name="Salvar projeto").click()
+        expect(page.get_by_role("status")).to_contain_text("Projeto salvo")
+        page.goto(base + "/discover")
+        expect(page.get_by_role("heading", name="Explorar")).to_be_visible()
+        page.get_by_label("Buscar assets e modelos").fill("personagem")
+        expect(page.locator("#catalog-count")).to_contain_text("item")
+        page.goto(base + "/assets")
+        expect(page.get_by_role("heading", name="Biblioteca de assets")).to_be_visible()
+        page.get_by_label("Buscar assets e modelos").fill("personagem")
+        expect(page.get_by_role("button", name="Abrir projeto").first).to_be_visible()
         page.get_by_role("button", name="Sair").click()
         expect(page.get_by_role("heading", name="Entre no estúdio")).to_be_visible()
         page.get_by_label("Senha").fill(viewer)
@@ -148,8 +166,9 @@ with tempfile.TemporaryDirectory() as directory:
         else:
             raise RuntimeError("O servidor não iniciou no tempo esperado.")
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(executable_path=shutil.which("chromium"),
-                                                 args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+            browser = playwright.chromium.launch(
+                executable_path=shutil.which("chromium") or playwright.chromium.executable_path,
+                args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
             try:
                 exercise(browser, base, admin, viewer)
             finally:
